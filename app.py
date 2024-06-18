@@ -1,8 +1,8 @@
-from flask import Flask, request, jsonify, g
+from flask import Flask, request, jsonify, g, render_template
 import sqlite3
 from sqlite3 import IntegrityError
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', template_folder='templates')
 
 DATABASE = 'mydatabase.db'
 
@@ -20,11 +20,16 @@ def init_db():
             db.cursor().executescript(f.read())
         db.commit()
 
+
 @app.teardown_appcontext
 def close_db(exception):
     db = getattr(g, '_database', None)
     if db is not None:
         db.close()
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/users', methods=['POST'])
 def create_user():
@@ -45,9 +50,10 @@ def get_users():
 
 @app.route('/users/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
+    request_data = request.get_json()
     db = get_db()
     db.execute('UPDATE users SET name = ?, email = ? WHERE id = ?',
-               [request.json['name'], request.json['email'], user_id])
+               [request_data['name'], request_data['email'], user_id])
     db.commit()
     return jsonify({"message": "User updated successfully"}), 200
 
@@ -59,5 +65,5 @@ def delete_user(user_id):
     return jsonify({"message": "User deleted successfully"}), 200
 
 if __name__ == '__main__':
-    init_db()  # Initialize the database
+    init_db()
     app.run(debug=True)
